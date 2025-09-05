@@ -10,10 +10,15 @@ import (
 )
 
 func OpenGorm(dsn string) (*gorm.DB, error) {
+	return OpenGormWithDialector(mysql.Open(dsn))
+}
+
+// OpenGormWithDialector lets tests inject a mocked *sql.DB via a dialector.
+func OpenGormWithDialector(dial gorm.Dialector) (*gorm.DB, error) {
 	cfg := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	}
-	db, err := gorm.Open(mysql.Open(dsn), cfg)
+	db, err := gorm.Open(dial, cfg)
 	if err != nil {
 		return nil, err
 	}
