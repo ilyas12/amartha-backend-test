@@ -45,7 +45,7 @@ func (m *mockRepo) Save(ctx context.Context, l *domain.Loan) error {
 
 func (m *mockRepo) GetPendingLoanByBorrowerID(ctx context.Context, borrowerID string) (*domain.Loan, error) {
 	if m.GetPendingLoanByBorrowerIDFn != nil {
-		return m.GetPendingLoanByBorrowerID(ctx, borrowerID)
+		return m.GetPendingLoanByBorrowerIDFn(ctx, borrowerID)
 	}
 	return nil, errors.New("not implemented")
 }
