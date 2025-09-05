@@ -46,7 +46,7 @@ func (r *respRecorder) Write(b []byte) (int, error) {
 }
 func (r *respRecorder) WriteHeader(statusCode int) { r.code = statusCode; r.w.WriteHeader(statusCode) }
 
-// IdempotencyMiddleware: key = method + route + Ax-Borrower-Id
+// IdempotencyMiddleware: key = method + route + user id + request id
 // Ax-Request-At **must** be epoch (seconds or ms) OR RFC3339/RFC3339Nano **with** timezone (Z or ±HH:MM).
 func IdempotencyMiddleware(rdb *redis.Client, ttl time.Duration) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
