@@ -38,6 +38,7 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.Logger(), middleware.Recover())
+	e.Validator = httpadp.NewValidator()
 	e.Logger.SetOutput(os.Stdout)
 	log.SetOutput(os.Stdout)
 	// global idempotency for mutating methods, TTL in seconds
