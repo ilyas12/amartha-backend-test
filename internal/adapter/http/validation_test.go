@@ -141,14 +141,3 @@ func TestToFieldErrors_NonValidation(t *testing.T) {
 		t.Fatalf("unexpected mapping: %+v", fe[0])
 	}
 }
-
-// ---- helpers ----
-
-func containsFieldMsg(list []FieldError, field, substr string) bool {
-	for _, e := range list {
-		if e.Field == field && strings.Contains(e.Message, substr) {
-			return true
-		}
-	}
-	return false
-}

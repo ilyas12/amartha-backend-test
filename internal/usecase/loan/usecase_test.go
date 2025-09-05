@@ -2,8 +2,8 @@ package loan
 
 import (
 	domain "amartha-backend-test/internal/domain/loan"
+	loanmock "amartha-backend-test/internal/testutil/loanmock"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,51 +12,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// ----- test doubles -----
-
-// mockRepo implements domain.Repository (only methods used by these tests).
-type mockRepo struct {
-	CreateFn                     func(ctx context.Context, l *domain.Loan) error
-	GetByLoanIDFn                func(ctx context.Context, loanID string) (*domain.Loan, error)
-	GetPendingLoanByBorrowerIDFn func(ctx context.Context, borrowerID string) (*domain.Loan, error)
-	SaveFn                       func(ctx context.Context, l *domain.Loan) error
-}
-
-func (m *mockRepo) Create(ctx context.Context, l *domain.Loan) error {
-	if m.CreateFn != nil {
-		return m.CreateFn(ctx, l)
-	}
-	return nil
-}
-
-func (m *mockRepo) GetByLoanID(ctx context.Context, loanID string) (*domain.Loan, error) {
-	if m.GetByLoanIDFn != nil {
-		return m.GetByLoanIDFn(ctx, loanID)
-	}
-	return nil, errors.New("not implemented")
-}
-
-func (m *mockRepo) Save(ctx context.Context, l *domain.Loan) error {
-	if m.SaveFn != nil {
-		return m.SaveFn(ctx, l)
-	}
-	return nil
-}
-
-func (m *mockRepo) GetPendingLoanByBorrowerID(ctx context.Context, borrowerID string) (*domain.Loan, error) {
-	if m.GetPendingLoanByBorrowerIDFn != nil {
-		return m.GetPendingLoanByBorrowerIDFn(ctx, borrowerID)
-	}
-	return nil, errors.New("not implemented")
-}
-
 // If your real Repository interface also includes Save(...) etc.,
 // add no-op methods here so the mock satisfies it. Example:
 // func (m *mockRepo) Save(ctx context.Context, l *domain.Loan) error { return nil }
 
 // ----- tests -----
 func TestCreate_Success_NoPendingLoan(t *testing.T) {
-	uc := NewUsecase(&mockRepo{
+	uc := NewUsecase(&loanmock.Repo{
 		// Simulate: no pending loan ⇒ repo returns gorm.ErrRecordNotFound
 		GetPendingLoanByBorrowerIDFn: func(ctx context.Context, borrowerID string) (*domain.Loan, error) {
 			return nil, gorm.ErrRecordNotFound
@@ -90,7 +52,7 @@ func TestCreate_Rejects_WhenPendingLoanExists(t *testing.T) {
 	const borrowerID = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	const existingLoanID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	uc := NewUsecase(&mockRepo{
+	uc := NewUsecase(&loanmock.Repo{
 		// Simulate: a pending (proposed) loan already exists
 		GetPendingLoanByBorrowerIDFn: func(ctx context.Context, id string) (*domain.Loan, error) {
 			if id != borrowerID {
@@ -131,7 +93,7 @@ func TestCreate_Rejects_WhenPendingLoanExists(t *testing.T) {
 func TestGet_Success(t *testing.T) {
 	const LID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	now := time.Now().UTC()
-	uc := NewUsecase(&mockRepo{
+	uc := NewUsecase(&loanmock.Repo{
 		GetByLoanIDFn: func(ctx context.Context, loanID string) (*domain.Loan, error) {
 			return &domain.Loan{
 				LoanID: LID, BorrowerID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -150,7 +112,7 @@ func TestGet_Success(t *testing.T) {
 }
 
 func TestCreate_InvalidInput(t *testing.T) {
-	uc := NewUsecase(&mockRepo{})
+	uc := NewUsecase(&loanmock.Repo{})
 	_, err := uc.Create(context.Background(), CreateLoanInput{
 		BorrowerID: "short", Principal: 0, Rate: 0.2, ROI: 0.1,
 	})
