@@ -1,0 +1,68 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: loan-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_DOCKER_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DOCKER_DATABASE:-amartha}
+      MYSQL_USER: ${MYSQL_DOCKER_USER:-amartha}
+      MYSQL_PASSWORD: ${MYSQL_DOCKER_PASSWORD:-amartha}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_DOCKER_ROOT_PASSWORD --silent || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: loan-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"   # optional: expose to host
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: loan-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # These just ensure defaults if .env misses anything
+      APP_PORT: ${APP_PORT:-8080}
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_DB:   ${MYSQL_DB:-amartha}
+      MYSQL_USER: ${MYSQL_USER:-amartha}
+      MYSQL_PASS: ${MYSQL_PASS:-amartha}
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      REDIS_DB:   ${REDIS_DB:-0}
+      IDEMPOTENCY_TTL_SECONDS: ${IDEMPOTENCY_TTL_SECONDS:-172800}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
