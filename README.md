@@ -24,7 +24,6 @@ This repository is the Loan Service assessment implementation: a clean-architect
 │     ├─ db/                # GORM connector (MySQL)
 │     └─ cache/             # Redis client
 ├─ pkg/                     # Shared, framework-agnostic utilities
-│  └─ id/                   # 32-char public ID generator
 ├─ .env.example             # Example environment configuration
 ├─ docker-compose.yml       # Local MySQL & Redis for development
 └─ README.md
@@ -45,8 +44,8 @@ This repository is the Loan Service assessment implementation: a clean-architect
   Concrete runtime dependencies: GORM connector (MySQL) and Redis client.
 * **cmd/api/**
   Composition root: build dependencies, assemble routes, set middleware, and start the server.
-## Request flow (end-to-end)
 
+## Request flow (end-to-end)
 1. **Echo handler** parses/validates input and enforces idempotency (middleware).
 2. Calls **usecase** (e.g., `Approve`, `Invest`), passing a context + DTO.
 3. Usecase opens a **transaction** via repository `Tx` and loads aggregates with **FOR UPDATE** where needed.
@@ -63,7 +62,7 @@ This repository is the Loan Service assessment implementation: a clean-architect
 ## Idempotency (Redis)
 
 * Applied to **mutating** methods (POST/PUT/PATCH/DELETE) by global middleware.
-* Requires header `Idempotency-Key`.
+* Requires header `Ax-Request-At`,`Ax-Request-Id` and `Ax-Borrower-Id`.
 * Stores `{code, body, body_sha256}` in Redis with TTL (`IDEMPOTENCY_TTL_SECONDS`).
 * Same key + **same body** → previous response **replayed**.
 * Same key + **different body** → **409 Conflict**.

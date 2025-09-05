@@ -30,13 +30,13 @@ func getenv(k, d string) string {
 
 func Load() *Config {
 	c := &Config{
-		AppPort:      getenv("APP_PORT", "8080"),
-		MySQLHost:    getenv("MYSQL_HOST", "127.0.0.1"),
-		MySQLPort:    getenv("MYSQL_PORT", "3306"),
-		MySQLDB:      getenv("MYSQL_DB", "app"),
-		MySQLUser:    getenv("MYSQL_USER", "app"),
-		MySQLPass:    getenv("MYSQL_PASS", "app"),
-		RedisAddr:    getenv("REDIS_ADDR", "127.0.0.1:6379"),
+		AppPort:      getenv("APP_PORT", ""),
+		MySQLHost:    getenv("MYSQL_HOST", ""),
+		MySQLPort:    getenv("MYSQL_PORT", ""),
+		MySQLDB:      getenv("MYSQL_DB", ""),
+		MySQLUser:    getenv("MYSQL_USER", ""),
+		MySQLPass:    getenv("MYSQL_PASS", ""),
+		RedisAddr:    getenv("REDIS_ADDR", ""),
 		IdempTTLSecs: 172800,
 	}
 	if v := os.Getenv("REDIS_DB"); v != "" {

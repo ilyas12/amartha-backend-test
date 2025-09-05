@@ -3,10 +3,8 @@ package middleware
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -15,12 +13,22 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	// How long we hold the "in-progress" lock before it must be refreshed by finishing the handler.
+	provisionalLockTTL = 60 * time.Second
+	// Allowed client/server clock skew for Ax-Request-At (in UTC).
+	maxClockSkew = 10 * time.Minute
+)
+
+// ---- Data types ----
 type idempEntry struct {
-	InProgress bool      `json:"in_progress"`
-	Code       int       `json:"code"`
-	Body       []byte    `json:"body"`
-	BodySHA256 string    `json:"body_sha256"`
-	CreatedAt  time.Time `json:"created_at"`
+	InProgress  bool      `json:"in_progress"`
+	Code        int       `json:"code"`
+	Body        []byte    `json:"body"`
+	BodySHA256  string    `json:"body_sha256"`
+	RequestID   string    `json:"request_id"`
+	RequestAtMS int64     `json:"request_at_ms"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type respRecorder struct {
@@ -38,64 +46,100 @@ func (r *respRecorder) Write(b []byte) (int, error) {
 }
 func (r *respRecorder) WriteHeader(statusCode int) { r.code = statusCode; r.w.WriteHeader(statusCode) }
 
-func bodyHash(b []byte) string { s := sha256.Sum256(b); return hex.EncodeToString(s[:]) }
-
-// IdempotencyMiddleware enforces idempotency for mutating methods using Redis.
+// IdempotencyMiddleware: key = method + route + Ax-Borrower-Id
+// Ax-Request-At **must** be epoch (seconds or ms) OR RFC3339/RFC3339Nano **with** timezone (Z or ±HH:MM).
 func IdempotencyMiddleware(rdb *redis.Client, ttl time.Duration) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			m := c.Request().Method
-			if m == http.MethodGet || m == http.MethodHead || m == http.MethodOptions {
+			req := c.Request()
+			method := req.Method
+
+			// Only enforce on mutating methods
+			switch method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
 				return next(c)
 			}
 
-			idKey := c.Request().Header.Get("Idempotency-Key")
-			if idKey == "" {
-				return c.JSON(http.StatusBadRequest, map[string]string{"error": "missing Idempotency-Key"})
+			// Headers Validation
+			reqID := strings.TrimSpace(req.Header.Get("Ax-Request-Id"))
+			if reqID == "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "missing Ax-Request-Id"})
+			}
+			if !validReqID(reqID) {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid Ax-Request-Id format"})
 			}
 
-			var bodyBytes []byte
-			if c.Request().Body != nil {
-				bodyBytes, _ = io.ReadAll(c.Request().Body)
+			reqAt, err := parseAxRequestAt(req.Header.Get("Ax-Request-At"))
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 			}
-			c.Request().Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-			bhash := bodyHash(bodyBytes)
+			now := nowUTC()
+			if reqAt.Before(now.Add(-maxClockSkew)) || reqAt.After(now.Add(maxClockSkew)) {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "Ax-Request-At too skewed"})
+			}
 
-			redisKey := "idemp:" + strings.ToLower(m) + ":" + c.Path() + ":" + idKey
-			ctx, cancel := context.WithTimeout(c.Request().Context(), 2*time.Second)
+			borrowerID := strings.TrimSpace(req.Header.Get("Ax-Borrower-Id"))
+			if borrowerID == "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "missing Ax-Borrower-Id"})
+			}
+			if !reHex32.MatchString(borrowerID) {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid Ax-Borrower-Id"})
+			}
+
+			// Buffer & hash body
+			var body []byte
+			if req.Body != nil {
+				body, _ = io.ReadAll(req.Body)
+			}
+			req.Body = io.NopCloser(bytes.NewBuffer(body))
+			bhash := bodyHash(body)
+
+			// 3) Provisional lock key
+			key := buildKey(method, c.Path(), borrowerID)
+			ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 			defer cancel()
 
-			entry := idempEntry{InProgress: true, BodySHA256: bhash, CreatedAt: time.Now()}
-			pl, _ := json.Marshal(entry)
-			ok, err := rdb.SetNX(ctx, redisKey, pl, 60*time.Second).Result()
+			entry := idempEntry{
+				InProgress:  true,
+				BodySHA256:  bhash,
+				RequestID:   reqID,
+				RequestAtMS: reqAt.UnixMilli(),
+				CreatedAt:   nowUTC(),
+			}
+			ok, err := provisionalSet(ctx, rdb, key, entry)
 			if err != nil {
 				return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "idempotency store unavailable"})
 			}
 			if !ok {
-				var cur idempEntry
-				v, err := rdb.Get(ctx, redisKey).Bytes()
-				if err == nil {
-					_ = json.Unmarshal(v, &cur)
-				}
+				// Key exists: body must match, and we may be able to replay
+				cur, _ := loadEntry(ctx, rdb, key)
+				log.Println(cur)
 				if cur.BodySHA256 != "" && cur.BodySHA256 != bhash {
-					return c.JSON(http.StatusConflict, map[string]string{"error": "idempotency key re-used with different body"})
+					return c.JSON(http.StatusConflict, map[string]string{"error": "Ax-Request-Id reused with different body"})
 				}
-				if !cur.InProgress && cur.Code != 0 {
+				if !cur.InProgress && cur.Code != 0 && len(cur.Body) > 0 {
 					return c.Blob(cur.Code, echo.MIMEApplicationJSON, cur.Body)
 				}
-				return c.JSON(http.StatusConflict, map[string]string{"error": "idempotent request in progress"})
+				return c.JSON(http.StatusConflict, map[string]string{"error": "request is already in progress"})
 			}
 
+			// 4) Call next and record final response
 			rec := &respRecorder{w: c.Response().Writer, buf: &bytes.Buffer{}, code: http.StatusOK}
 			c.Response().Writer = rec
-			err = next(c)
-			if err != nil {
+			if err := next(c); err != nil {
 				c.Error(err)
 			}
 
-			final := idempEntry{InProgress: false, Code: rec.code, Body: rec.buf.Bytes(), BodySHA256: bhash, CreatedAt: time.Now()}
-			fv, _ := json.Marshal(final)
-			_ = rdb.Set(context.Background(), redisKey, fv, ttl).Err()
+			final := idempEntry{
+				InProgress:  false,
+				Code:        rec.code,
+				Body:        rec.buf.Bytes(),
+				BodySHA256:  bhash,
+				RequestID:   reqID,
+				RequestAtMS: reqAt.UnixMilli(),
+				CreatedAt:   nowUTC(),
+			}
+			_ = saveFinal(context.Background(), rdb, key, final, ttl)
 			return nil
 		}
 	}
