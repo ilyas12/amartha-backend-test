@@ -77,5 +77,13 @@ func (u *Usecase) Get(ctx context.Context, loanID string) (*LoanDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &LoanDTO{LoanID: l.LoanID, BorrowerID: l.BorrowerID, Principal: l.Principal, Rate: l.Rate, ROI: l.ROI, State: string(l.State), CreatedAt: l.CreatedAt}, nil
+	return &LoanDTO{
+		LoanID:     l.LoanID,
+		BorrowerID: l.BorrowerID,
+		Principal:  l.Principal,
+		Rate:       l.Rate,
+		ROI:        l.ROI,
+		State:      string(l.State),
+		CreatedAt:  l.CreatedAt,
+	}, nil
 }
