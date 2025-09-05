@@ -95,7 +95,7 @@ func IdempotencyMiddleware(rdb *redis.Client, ttl time.Duration) echo.Middleware
 			bhash := bodyHash(body)
 
 			// 3) Provisional lock key
-			key := buildKey(method, c.Path(), borrowerID)
+			key := buildKey(method, c.Path(), borrowerID, reqID)
 			ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 			defer cancel()
 
@@ -112,8 +112,11 @@ func IdempotencyMiddleware(rdb *redis.Client, ttl time.Duration) echo.Middleware
 			}
 			if !ok {
 				// Key exists: body must match, and we may be able to replay
-				cur, _ := loadEntry(ctx, rdb, key)
-				log.Println(cur)
+				cur, errLoad := loadEntry(ctx, rdb, key)
+				if errLoad != nil {
+					log.Printf("Failed To get Load Data %s in Idempotency %s", key, errLoad.Error())
+				}
+
 				if cur.BodySHA256 != "" && cur.BodySHA256 != bhash {
 					return c.JSON(http.StatusConflict, map[string]string{"error": "Ax-Request-Id reused with different body"})
 				}

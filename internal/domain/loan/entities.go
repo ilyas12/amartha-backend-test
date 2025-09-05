@@ -13,6 +13,7 @@ const (
 	StateApproved  State = "approved"
 	StateInvested  State = "invested"
 	StateDisbursed State = "disbursed"
+	StateRejected  State = "rejected"
 )
 
 type Loan struct {
@@ -23,7 +24,7 @@ type Loan struct {
 	Rate           float64        `gorm:"type:decimal(6,4)" json:"rate"`
 	ROI            float64        `gorm:"type:decimal(6,4)" json:"roi"`
 	AgreementLink  string         `gorm:"type:text" json:"agreement_link"`
-	State          State          `gorm:"type:enum('proposed','approved','invested','disbursed');default:'proposed'" json:"state"`
+	State          State          `gorm:"type:enum('proposed','rejected','approved','invested','disbursed');default:'proposed'" json:"state"`
 	StateUpdatedAt time.Time      `gorm:"autoCreateTime" json:"state_updated_at"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`

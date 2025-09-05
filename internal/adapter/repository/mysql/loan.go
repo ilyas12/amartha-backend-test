@@ -31,3 +31,12 @@ func (r *LoanRepository) GetByLoanID(ctx context.Context, loanID string) (*loan.
 	res := r.db.WithContext(ctx).Where("loan_id = ?", loanID).First(&out)
 	return &out, res.Error
 }
+
+func (r *LoanRepository) GetPendingLoanByBorrowerID(ctx context.Context, borrowerID string) (*loan.Loan, error) {
+	var out loan.Loan
+	res := r.db.WithContext(ctx).
+		Where("borrower_id = ? AND state = ?", borrowerID, loan.StateProposed).
+		Order("state_updated_at DESC, id DESC").
+		First(&out)
+	return &out, res.Error
+}

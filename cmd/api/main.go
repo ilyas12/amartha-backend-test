@@ -4,6 +4,7 @@ import (
 	"amartha-backend-test/internal/config"
 	"amartha-backend-test/internal/infrastructure/cache"
 	"log"
+	"os"
 	"time"
 
 	httpadp "amartha-backend-test/internal/adapter/http"
@@ -37,6 +38,8 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.Logger(), middleware.Recover())
+	e.Logger.SetOutput(os.Stdout)
+	log.SetOutput(os.Stdout)
 	// global idempotency for mutating methods, TTL in seconds
 	e.Use(idmp.IdempotencyMiddleware(rdb, time.Duration(cfg.IdempTTLSecs)*time.Second))
 	h := httpadp.NewHandler()

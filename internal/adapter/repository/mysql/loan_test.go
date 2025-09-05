@@ -123,6 +123,57 @@ func TestGetByLoanID_NotFound(t *testing.T) {
 	}
 }
 
+func TestGetPendingLoanByBorrowerID(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewLoanRepository(db)
+	ctx := context.Background()
+
+	b1 := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	now := time.Now().UTC()
+
+	// Seed loans:
+	// - borrower b1 with approved (should NOT match)
+	if err := db.Create(&loanSQLite{
+		LoanID:     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		BorrowerID: b1, Principal: 1_000_000, Rate: 0.22, ROI: 0.18,
+		State: "approved", StateUpdatedAt: now.Add(-3 * time.Hour),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// - borrower b1 with proposed (older)
+	if err := db.Create(&loanSQLite{
+		LoanID:     "cccccccccccccccccccccccccccccccc",
+		BorrowerID: b1, Principal: 1_500_000, Rate: 0.22, ROI: 0.18,
+		State: "proposed", StateUpdatedAt: now.Add(-2 * time.Hour),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// - borrower b1 with proposed (newer) => should be returned
+	wantID := "dddddddddddddddddddddddddddddddd"
+	if err := db.Create(&loanSQLite{
+		LoanID:     wantID,
+		BorrowerID: b1, Principal: 2_000_000, Rate: 0.24, ROI: 0.19,
+		State: "proposed", StateUpdatedAt: now.Add(-1 * time.Hour),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetPendingLoanByBorrowerID(ctx, b1)
+	if err != nil {
+		t.Fatalf("GetPendingLoanByBorrowerID error: %v", err)
+	}
+	if got == nil || got.LoanID != wantID || got.State != domain.StateProposed {
+		t.Fatalf("unexpected loan: %+v", got)
+	}
+
+	// borrower with no proposed
+	if _, err := repo.GetPendingLoanByBorrowerID(ctx, "cccccccccccccccccccccccccccccccc"); err == nil {
+		t.Fatalf("expected not found for borrower without proposed loans")
+	}
+}
+
 func TestTx_Commit(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewLoanRepository(db)
