@@ -50,14 +50,14 @@ services:
     environment:
       # These just ensure defaults if .env misses anything
       APP_PORT: ${APP_PORT:-8080}
-      MYSQL_HOST: ${MYSQL_HOST:-mysql}
-      MYSQL_PORT: ${MYSQL_PORT:-3306}
-      MYSQL_DB:   ${MYSQL_DB:-amartha}
-      MYSQL_USER: ${MYSQL_USER:-amartha}
-      MYSQL_PASS: ${MYSQL_PASS:-amartha}
-      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      MYSQL_HOST: mysql                 
+      MYSQL_PORT: "3306"
+      MYSQL_DB: ${MYSQL_DOCKER_DATABASE}
+      MYSQL_USER: ${MYSQL_DOCKER_USER}
+      MYSQL_PASS: ${MYSQL_DOCKER_PASSWORD}
+      REDIS_ADDR: redis:6379          
       REDIS_DB:   ${REDIS_DB:-0}
-      IDEMPOTENCY_TTL_SECONDS: ${IDEMPOTENCY_TTL_SECONDS:-172800}
+      IDEMPOTENCY_TTL_SECONDS: ${IDEMPOTENCY_TTL_SECONDS:-300}
       TZ: ${TZ:-Asia/Jakarta}
     ports:
       - "${APP_PORT:-8080}:8080"

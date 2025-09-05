@@ -21,6 +21,9 @@ import (
 func main() {
 	_ = godotenv.Load(".env")
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("bad config: %v", err)
+	}
 
 	gormDB, err := dbinfra.OpenGorm(cfg.MySQLDSN())
 	if err != nil {
