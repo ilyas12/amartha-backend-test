@@ -25,7 +25,7 @@ func (m *Repo) GetByLoanID(ctx context.Context, loanID string) (*domain.Loan, er
 	if m.GetByLoanIDFn != nil {
 		return m.GetByLoanIDFn(ctx, loanID)
 	}
-	return nil, context.Canceled // or errors.New("not implemented")
+	return nil, context.Canceled
 }
 func (m *Repo) Save(ctx context.Context, l *domain.Loan) error {
 	if m.SaveFn != nil {

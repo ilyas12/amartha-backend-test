@@ -24,12 +24,12 @@ func (m *Repo) GetByLoanID(ctx context.Context, loanNumericID uint64) (*domain.A
 	if m.GetByLoanIDFn != nil {
 		return m.GetByLoanIDFn(ctx, loanNumericID)
 	}
-	return nil, context.Canceled // or errors.New("not implemented")
+	return nil, context.Canceled
 }
 
 func (m *Repo) GetByApprovalID(ctx context.Context, approvalID string) (*domain.Approval, error) {
 	if m.GetByApprovalIDFn != nil {
 		return m.GetByApprovalIDFn(ctx, approvalID)
 	}
-	return nil, context.Canceled // or errors.New("not implemented")
+	return nil, context.Canceled
 }
