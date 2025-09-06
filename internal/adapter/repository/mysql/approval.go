@@ -26,7 +26,7 @@ func (r *ApprovalRepository) Create(ctx context.Context, a *approvalDomain.Appro
 func (r *ApprovalRepository) GetByLoanID(ctx context.Context, loanNumericID uint64) (*approvalDomain.Approval, error) {
 	var out approvalDomain.Approval
 	res := r.db.WithContext(ctx).
-		Where("loan_id = ? AND deleted_at IS NULL", loanNumericID).
+		Where("loan_id = ?", loanNumericID).
 		First(&out)
 	return &out, res.Error
 }
@@ -34,7 +34,7 @@ func (r *ApprovalRepository) GetByLoanID(ctx context.Context, loanNumericID uint
 func (r *ApprovalRepository) GetByApprovalID(ctx context.Context, approvalID string) (*approvalDomain.Approval, error) {
 	var out approvalDomain.Approval
 	res := r.db.WithContext(ctx).
-		Where("approval_id = ? AND deleted_at IS NULL", approvalID).
+		Where("approval_id = ?", approvalID).
 		First(&out)
 	return &out, res.Error
 }
