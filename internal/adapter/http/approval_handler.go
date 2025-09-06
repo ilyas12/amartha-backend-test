@@ -3,12 +3,14 @@ package http
 import (
 	"net/http"
 
+	"amartha-backend-test/internal/usecase/approval"
+
 	"github.com/labstack/echo/v4"
 )
 
-type ApprovalHandler struct{}
+type ApprovalHandler struct{ uc *approval.Usecase }
 
-func NewApprovalHandler() *ApprovalHandler { return &ApprovalHandler{} }
+func NewApprovalHandler(uc *approval.Usecase) *ApprovalHandler { return &ApprovalHandler{uc: uc} }
 
 type approveLoanReq struct {
 	PhotoURL            string `json:"photo_url"              validate:"required,url"`

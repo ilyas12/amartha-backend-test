@@ -11,6 +11,7 @@ import (
 	idmp "amartha-backend-test/internal/adapter/middleware"
 	repomysql "amartha-backend-test/internal/adapter/repository/mysql"
 	dbinfra "amartha-backend-test/internal/infrastructure/db"
+	usecaseApproval "amartha-backend-test/internal/usecase/approval"
 	usecaseLoan "amartha-backend-test/internal/usecase/loan"
 
 	"github.com/joho/godotenv"
@@ -35,8 +36,14 @@ func main() {
 	}
 	defer rdb.Close()
 
-	repo := repomysql.NewLoanRepository(gormDB)
-	uc := usecaseLoan.NewUsecase(repo)
+	loanRepo := repomysql.NewLoanRepository(gormDB)
+	ucLoan := usecaseLoan.NewUsecase(loanRepo)
+	approvalRepo := repomysql.NewApprovalRepository(gormDB)
+	// UoW (one generic Unit-of-Work for all flows)
+	uow := repomysql.NewGormUoW(gormDB)
+
+	// Usecase (inject repos + UoW)
+	ucApproval := usecaseApproval.NewUsecase(loanRepo, approvalRepo, uow)
 
 	e := echo.New()
 	e.HideBanner = true
@@ -47,8 +54,9 @@ func main() {
 	// global idempotency for mutating methods, TTL in seconds
 	e.Use(idmp.IdempotencyMiddleware(rdb, time.Duration(cfg.IdempTTLSecs)*time.Second))
 	h := httpadp.NewHandler()
-	hLoan := httpadp.NewLoanHandler(uc)
-	hApproval := httpadp.NewApprovalHandler()
+	hLoan := httpadp.NewLoanHandler(ucLoan)
+	hApproval := httpadp.NewApprovalHandler(ucApproval)
+
 	// routes
 	e.GET("/health", h.Health)
 

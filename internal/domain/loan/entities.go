@@ -1,6 +1,7 @@
 package loan
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -14,6 +15,12 @@ const (
 	StateInvested  State = "invested"
 	StateDisbursed State = "disbursed"
 	StateRejected  State = "rejected"
+)
+
+var (
+	ErrNotFound          = errors.New("loan not found")
+	ErrInvalidTransition = errors.New("invalid state transition")
+	ErrAlreadyApproved   = errors.New("loan already approved")
 )
 
 type Loan struct {

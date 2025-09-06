@@ -1,9 +1,14 @@
 package approval
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
+)
+
+var (
+	ErrNotFound = errors.New("approval not found")
 )
 
 // Table: approvals (matches your DDL)
