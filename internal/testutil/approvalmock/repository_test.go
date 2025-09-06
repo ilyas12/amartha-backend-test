@@ -1,4 +1,4 @@
-package loanmock
+package approvalmock
 
 import (
 	"context"

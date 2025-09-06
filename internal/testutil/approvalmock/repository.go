@@ -1,4 +1,4 @@
-package loanmock
+package approvalmock
 
 import (
 	domain "amartha-backend-test/internal/domain/approval"
