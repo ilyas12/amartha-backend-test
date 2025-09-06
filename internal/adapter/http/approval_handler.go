@@ -6,14 +6,14 @@ import (
 	"time"
 
 	domainLoan "amartha-backend-test/internal/domain/loan"
-	ucapproval "amartha-backend-test/internal/usecase/approval"
+	ucApproval "amartha-backend-test/internal/usecase/approval"
 
 	"github.com/labstack/echo/v4"
 )
 
-type ApprovalHandler struct{ uc *ucapproval.Usecase }
+type ApprovalHandler struct{ uc *ucApproval.Usecase }
 
-func NewApprovalHandler(uc *ucapproval.Usecase) *ApprovalHandler { return &ApprovalHandler{uc: uc} }
+func NewApprovalHandler(uc *ucApproval.Usecase) *ApprovalHandler { return &ApprovalHandler{uc: uc} }
 
 type approveLoanReq struct {
 	PhotoURL            string `json:"photo_url"             validate:"required,url"`
@@ -54,7 +54,7 @@ func (h *ApprovalHandler) ApproveLoan(c echo.Context) error {
 	// call usecase
 	dto, uerr := h.uc.Approve(
 		c.Request().Context(),
-		ucapproval.ApproveInput{
+		ucApproval.ApproveInput{
 			LoanID:              loanID,
 			PhotoURL:            req.PhotoURL,
 			ValidatorEmployeeID: req.ValidatorEmployeeID,
