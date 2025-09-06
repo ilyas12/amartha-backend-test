@@ -48,10 +48,12 @@ func main() {
 	e.Use(idmp.IdempotencyMiddleware(rdb, time.Duration(cfg.IdempTTLSecs)*time.Second))
 	h := httpadp.NewHandler()
 	hLoan := httpadp.NewLoanHandler(uc)
+	hApproval := httpadp.NewApprovalHandler()
 	// routes
 	e.GET("/health", h.Health)
 
 	e.POST("/loans", hLoan.CreateLoan)
+	e.POST("/loans/:loan_id/approve", hApproval.ApproveLoan)
 	e.GET("/loans/:loan_id", hLoan.GetLoan)
 
 	addr := ":" + cfg.AppPort

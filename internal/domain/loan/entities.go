@@ -31,3 +31,5 @@ type Loan struct {
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
 	DeletedBy      string         `gorm:"size:32" json:"-"`
 }
+
+func (Loan) TableName() string { return "loans" }
