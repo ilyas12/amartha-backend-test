@@ -12,6 +12,7 @@ type Repo struct {
 	GetByLoanIDFn                func(ctx context.Context, loanID string) (*domain.Loan, error)
 	SaveFn                       func(ctx context.Context, l *domain.Loan) error
 	GetPendingLoanByBorrowerIDFn func(ctx context.Context, borrowerID string) (*domain.Loan, error)
+	GetByLoanIDForUpdateFn       func(ctx context.Context, loanID string) (*domain.Loan, error)
 }
 
 func (m *Repo) Create(ctx context.Context, l *domain.Loan) error {
@@ -32,9 +33,17 @@ func (m *Repo) Save(ctx context.Context, l *domain.Loan) error {
 	}
 	return nil
 }
+
 func (m *Repo) GetPendingLoanByBorrowerID(ctx context.Context, borrowerID string) (*domain.Loan, error) {
 	if m.GetPendingLoanByBorrowerIDFn != nil {
 		return m.GetPendingLoanByBorrowerIDFn(ctx, borrowerID)
+	}
+	return nil, context.Canceled
+}
+
+func (m *Repo) GetByLoanIDForUpdate(ctx context.Context, borrowerID string) (*domain.Loan, error) {
+	if m.GetByLoanIDForUpdateFn != nil {
+		return m.GetByLoanIDForUpdateFn(ctx, borrowerID)
 	}
 	return nil, context.Canceled
 }

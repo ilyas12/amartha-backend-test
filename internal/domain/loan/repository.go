@@ -8,4 +8,7 @@ type Repository interface {
 	GetByLoanID(ctx context.Context, loanID string) (*Loan, error)
 	GetPendingLoanByBorrowerID(ctx context.Context, borrowerID string) (*Loan, error)
 	Save(ctx context.Context, l *Loan) error
+
+	// Spesific get loan with locking for update
+	GetByLoanIDForUpdate(ctx context.Context, loanID string) (*Loan, error)
 }

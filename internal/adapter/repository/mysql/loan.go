@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type LoanRepository struct{ db *gorm.DB }
@@ -37,6 +38,15 @@ func (r *LoanRepository) GetPendingLoanByBorrowerID(ctx context.Context, borrowe
 	res := r.db.WithContext(ctx).
 		Where("borrower_id = ? AND state = ?", borrowerID, loanDomain.StateProposed).
 		Order("state_updated_at DESC, id DESC").
+		First(&out)
+	return &out, res.Error
+}
+
+func (r *LoanRepository) GetByLoanIDForUpdate(ctx context.Context, loanID string) (*loanDomain.Loan, error) {
+	var out loanDomain.Loan
+	res := r.db.WithContext(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("loan_id = ?", loanID).
 		First(&out)
 	return &out, res.Error
 }
