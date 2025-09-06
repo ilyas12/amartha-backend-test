@@ -64,6 +64,10 @@ func main() {
 	e.POST("/loans/:loan_id/approve", hApproval.ApproveLoan)
 	e.GET("/loans/:loan_id", hLoan.GetLoan)
 
+	for _, r := range e.Routes() {
+		log.Printf("route: %-6s %s", r.Method, r.Path)
+	}
+
 	addr := ":" + cfg.AppPort
 	log.Printf("listening on %s", addr)
 	if err := e.Start(addr); err != nil {

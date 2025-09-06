@@ -2,6 +2,7 @@ package approval
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	domainApproval "amartha-backend-test/internal/domain/approval"
@@ -9,6 +10,8 @@ import (
 	"amartha-backend-test/internal/domain/uow"
 	"amartha-backend-test/pkg/id"
 	"context"
+
+	"gorm.io/gorm"
 )
 
 type Usecase struct {
@@ -45,7 +48,8 @@ func (u *Usecase) Approve(ctx context.Context, in ApproveInput) (*ApprovalDTO, e
 		}
 
 		if _, err := r.Approvals.GetByLoanID(ctx, l.ID); err != nil {
-			if !errors.Is(err, domainApproval.ErrNotFound) {
+			log.Println(err.Error())
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				// real query error → surface upward
 				return err
 			}
